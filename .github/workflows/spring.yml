@@ -1,0 +1,32 @@
+name: Spring Boot
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [ master ]
+
+jobs:
+  build:
+    name: Build container image
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+
+      - uses: actions/setup-java@v1
+        with:
+          java-version: 11
+
+      - uses: actions/cache@v2
+        with:
+          path: ~/.m2/repository
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: mvn spring-boot:build-image
+        env:
+          CONTAINER_IMAGE: docker.pkg.github.com/backpaper0/github-packages-spring-boot-example/helloworld-spring-boot:latest
+        run: |
+          ./mvnw -B spring-boot:build-image -DskipTests -Dspring-boot.build-image.imageName=$CONTAINER_IMAGE
+          echo ${{ secrets.GITHUB_TOKEN }} | docker login https://docker.pkg.github.com -u backpaper0 --password-stdin
+          docker push $CONTAINER_IMAGE
